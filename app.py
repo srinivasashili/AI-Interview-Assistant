@@ -12,12 +12,12 @@ Flow:
 import streamlit as st
 import pandas as pd
 
-import db
-from prompts import question_generation_prompt, answer_evaluation_prompt
-from llm_client import call_claude
+import src.db
+from src.prompts import question_generation_prompt, answer_evaluation_prompt
+from src.llm_client import call_claude
 
 st.set_page_config(page_title="AI Interview Assistant", page_icon="🎤", layout="centered")
-db.init_db()
+src.db.init_db()
 
 # ---------- Session state setup ----------
 if "questions" not in st.session_state:
@@ -56,7 +56,7 @@ with tab_practice:
                             question_generation_prompt(role, experience_level, num_questions)
                         )
                         st.session_state.questions = result["questions"]
-                        st.session_state.session_id = db.create_session(role, experience_level)
+                        st.session_state.session_id = src.db.create_session(role, experience_level)
                         st.session_state.current_index = 0
                         st.session_state.feedback_log = []
                         st.session_state.role = role
@@ -86,7 +86,7 @@ with tab_practice:
                             feedback = call_claude(
                                 answer_evaluation_prompt(st.session_state.role, q["question"], answer)
                             )
-                            db.save_answer(
+                            src.db.save_answer(
                                 st.session_state.session_id, q["question"], q["type"],
                                 answer, feedback["score"], feedback
                             )
@@ -123,7 +123,7 @@ with tab_practice:
 with tab_history:
     st.subheader("Practice History")
 
-    history = db.get_score_history()
+    history = src.db.get_score_history()
     if history:
         df = pd.DataFrame(history)
         df["created_at"] = pd.to_datetime(df["created_at"])
@@ -132,12 +132,12 @@ with tab_history:
         st.caption("No scored answers yet — complete a practice session to see trends here.")
 
     st.divider()
-    sessions = db.get_all_sessions()
+    sessions = src.db.get_all_sessions()
     if not sessions:
         st.caption("No sessions yet.")
     for s in sessions:
         with st.expander(f"{s['role']} ({s['experience_level']}) — {s['created_at'][:16]}"):
-            answers = db.get_session_answers(s["id"])
+            answers = src.db.get_session_answers(s["id"])
             for a in answers:
                 st.markdown(f"**Q:** {a['question']}")
                 st.markdown(f"**Your answer:** {a['answer']}")
